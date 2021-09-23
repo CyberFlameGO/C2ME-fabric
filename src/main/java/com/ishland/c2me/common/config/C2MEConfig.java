@@ -47,11 +47,19 @@ public class C2MEConfig {
         public final boolean enabled;
         public final int serializerParallelism;
 
+        private static int getAsyncIoDefaultParallelism() {
+            if (PlatformDependent.isWindows()) {
+                return Runtime.getRuntime().availableProcessors() / 4;
+            } else {
+                return (int) (Math.round(Runtime.getRuntime().availableProcessors() / 3.2));
+            }
+        }
+
         public AsyncIoConfig(CommentedConfig config) {
             Preconditions.checkNotNull(config, "asyncIo config is not present");
             final ConfigUtils.ConfigScope configScope = new ConfigUtils.ConfigScope(config);
-            this.enabled = ConfigUtils.getValue(configScope, "enabled", () -> true, "Whether to enable this feature", List.of("radon"), false);
-            this.serializerParallelism = ConfigUtils.getValue(configScope, "serializerParallelism", () -> Math.max(2, Runtime.getRuntime().availableProcessors() / 4 - 1), "IO worker executor parallelism", List.of(), null, ConfigUtils.CheckType.THREAD_COUNT);
+            this.enabled = ConfigUtils.getValue(configScope, "enabled", () -> getAsyncIoDefaultParallelism() >= 1, "Whether to enable this feature", List.of("radon"), false);
+            this.serializerParallelism = ConfigUtils.getValue(configScope, "serializerParallelism", () -> Math.max(1, getAsyncIoDefaultParallelism()), "IO worker executor parallelism", List.of(), null, ConfigUtils.CheckType.THREAD_COUNT);
             configScope.removeUnusedKeys();
         }
     }
@@ -70,19 +78,19 @@ public class C2MEConfig {
         public final boolean reduceLockRadius;
         public final boolean useGlobalBiomeCache;
 
-        private static int getWorldGenDefaultParallelism0() {
+        private static int getWorldGenDefaultParallelism() {
             if (PlatformDependent.isWindows()) {
                 return Runtime.getRuntime().availableProcessors() / 2 - 2;
             } else {
-                return (int) (Runtime.getRuntime().availableProcessors() / 1.6) - 2;
+                return (int) (Math.round(Runtime.getRuntime().availableProcessors() / 1.6) - 2);
             }
         }
 
         public ThreadedWorldGenConfig(CommentedConfig config) {
             Preconditions.checkNotNull(config, "threadedWorldGen config is not present");
             final ConfigUtils.ConfigScope configScope = new ConfigUtils.ConfigScope(config);
-            this.enabled = ConfigUtils.getValue(configScope, "enabled", () -> getWorldGenDefaultParallelism0() >= 2 || global_enabled, "Whether to enable this feature", List.of(), false);
-            this.parallelism = ConfigUtils.getValue(configScope, "parallelism", () -> Math.max(2, getWorldGenDefaultParallelism0()), "World generation worker executor parallelism", List.of(), null, ConfigUtils.CheckType.THREAD_COUNT);
+            this.enabled = ConfigUtils.getValue(configScope, "enabled", () -> getWorldGenDefaultParallelism() >= 2 || global_enabled, "Whether to enable this feature", List.of(), false);
+            this.parallelism = ConfigUtils.getValue(configScope, "parallelism", () -> Math.max(2, getWorldGenDefaultParallelism()), "World generation worker executor parallelism", List.of(), null, ConfigUtils.CheckType.THREAD_COUNT);
             this.allowThreadedFeatures = ConfigUtils.getValue(configScope, "allowThreadedFeatures", () -> true || global_allowThreadedFeatures, "Whether to allow feature generation (world decorations like trees, ores and etc.) run in parallel \n (may cause incompatibility with other mods)", List.of(), null);
             this.reduceLockRadius = ConfigUtils.getValue(configScope, "reduceLockRadius", () -> false || global_reduceLockRadius, "Whether to allow reducing lock radius \n (may cause incompatibility with other mods)", List.of(), null);
             this.useGlobalBiomeCache = ConfigUtils.getValue(configScope, "useGlobalBiomeCache", () -> false || global_useGlobalBiomeCache, "Whether to enable global BiomeCache to accelerate worldgen \n This increases memory allocation ", List.of(), false);
@@ -147,12 +155,14 @@ public class C2MEConfig {
     }
 
     public static class ClientSideConfig {
+        public final boolean enabled;
         public final ModifyMaxVDConfig modifyMaxVDConfig;
 
         public ClientSideConfig(CommentedConfig config) {
             Preconditions.checkNotNull(config, "clientSideConfig config is not present");
             final ConfigUtils.ConfigScope configScope = new ConfigUtils.ConfigScope(config);
-            this.modifyMaxVDConfig = new ModifyMaxVDConfig(ConfigUtils.getValue(configScope, "modifyMaxVDConfig", ConfigUtils::config, "Configuration for modifying clientside max view distance", List.of(), null));
+            this.enabled = ConfigUtils.getValue(configScope, "enabled", () -> true, "Weather to enable c2me clientside features", List.of(), false);
+            this.modifyMaxVDConfig = new ModifyMaxVDConfig(ConfigUtils.getValue(configScope, "modifyMaxVDConfig", ConfigUtils::config, "Configuration for modifying clientside max view distance", List.of(), null), enabled);
             configScope.removeUnusedKeys();
         }
 
@@ -160,10 +170,10 @@ public class C2MEConfig {
             public final boolean enabled;
             public final int maxViewDistance;
 
-            public ModifyMaxVDConfig(CommentedConfig config) {
+            public ModifyMaxVDConfig(CommentedConfig config, boolean enabled) {
                 Preconditions.checkNotNull(config, "clientSideConfig config is not present");
                 final ConfigUtils.ConfigScope configScope = new ConfigUtils.ConfigScope(config);
-                this.enabled = ConfigUtils.getValue(configScope, "enabled", () -> true, "Weather to enable c2me clientside features", List.of("bobby"), false);
+                this.enabled = ConfigUtils.getValue(configScope, "enabled", () -> enabled, "Weather to enable c2me max view distance changes", List.of("bobby"), false);
                 this.maxViewDistance = ConfigUtils.getValue(configScope, "maxViewDistance", () -> 64, "Max render distance allowed in game options", List.of(), 64, ConfigUtils.CheckType.NO_TICK_VIEW_DISTANCE);
                 configScope.removeUnusedKeys();
             }

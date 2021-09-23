@@ -36,11 +36,14 @@ public class ConfigUtils {
 
         }
         config.processedKeys.add(key);
+        boolean isConfig = (def.get() instanceof Config);
         if (!config.config.contains(key) || (checks.length != 0 && Arrays.stream(checks).anyMatch(checkType -> !checkType.check(config.config.get(key)))))
-            config.config.set(key, def.get());
-        if (def.get() instanceof Config) config.config.setComment(key, String.format(" %s", comment));
+            if (isConfig) config.config.set(key, def.get());
+            else config.config.set(key, "default");
+        if (isConfig) config.config.setComment(key, String.format(" %s", comment));
         else config.config.setComment(key, String.format(" (Default: %s) %s", def.get(), comment));
-        return foundIncompatibleMods.isEmpty() ? Objects.requireNonNull(config.config.get(key)) : incompatibleDefault;
+        Object val = Objects.requireNonNull(config.config.get(key));
+        return foundIncompatibleMods.isEmpty() ? (val instanceof String && val.equals("default") ? def.get() : (T) val) : incompatibleDefault;
     }
 
     public static CommentedConfig config() {
